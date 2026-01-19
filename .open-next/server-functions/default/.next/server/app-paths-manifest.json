@@ -1,0 +1,11 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/og/route": "app/api/og/route.js",
+  "/api/health/route": "app/api/health/route.js",
+  "/(public)/page": "app/(public)/page.js",
+  "/(public)/account/page": "app/(public)/account/page.js",
+  "/(public)/suggest/new/page": "app/(public)/suggest/new/page.js",
+  "/(public)/suggestions/[id]/page": "app/(public)/suggestions/[id]/page.js",
+  "/(public)/reset-password/page": "app/(public)/reset-password/page.js",
+  "/(admin)/admin/page": "app/(admin)/admin/page.js"
+}

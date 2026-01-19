@@ -1,16 +1,5 @@
-import nodemailer from 'nodemailer'
 import { escapeHtml } from './sanitize'
 import { getSocialLinks, SITE_URL } from '@/lib/config'
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-})
 
 interface SendEmailOptions {
   to: string
@@ -55,18 +44,35 @@ function generateEmailFooter(): string {
 }
 
 export async function sendEmail({ to, subject, html }: SendEmailOptions): Promise<boolean> {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
-    console.warn('SMTP not configured, skipping email')
+  const apiKey = process.env.SMTP2GO_API_KEY
+  
+  if (!apiKey) {
+    console.warn('SMTP2GO_API_KEY not configured, skipping email')
     return false
   }
 
   try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to,
-      subject,
-      html,
+    const response = await fetch('https://api.smtp2go.com/v3/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        api_key: apiKey,
+        to: [to],
+        sender: process.env.SMTP_FROM || 'noreply@example.com',
+        subject,
+        html_body: html,
+      }),
     })
+
+    const result = await response.json()
+    
+    if (!response.ok || result.data?.error) {
+      console.error('SMTP2GO error:', result)
+      return false
+    }
+    
     return true
   } catch (error) {
     console.error('Failed to send email:', error)
