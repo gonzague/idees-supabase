@@ -1,5 +1,6 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "idees"
+main = ".open-next/worker.js"
 compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat"]
 
@@ -12,3 +13,14 @@ mode = "smart"
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
+
+# Environment variables (non-sensitive)
+[vars]
+NEXT_PUBLIC_SUPABASE_URL = "https://oxjldqwvwvugupagaplq.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_fwkmmxPGRcL9odtCJKyU6A_aOG_tLvO"
+NEXT_PUBLIC_SITE_URL = "https://idees.gonzague.me"
+NEXT_PUBLIC_SITE_NAME = "Idees"
+SMTP_HOST = "mail-eu.smtp2go.com"
+SMTP_PORT = "2525"
+SMTP_USER = "idees-node"
+SMTP_FROM = "idees@gonzague.me"
