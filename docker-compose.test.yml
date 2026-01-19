@@ -1,0 +1,86 @@
+# Local deployment testing configuration
+# Tests the FULL production stack (including Caddy) but with HTTP instead of HTTPS
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d --build
+#   ./test-deployment.sh
+#   docker compose -f docker-compose.test.yml down
+#
+# This file simulates production deployment locally:
+# - All 3 services run (app, pocketbase, caddy)
+# - Caddy routes requests like production
+# - But uses HTTP on localhost (no certificate needed)
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_POCKETBASE_URL: http://localhost:8080
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ""
+        NEXT_PUBLIC_SITE_URL: http://localhost:8080
+        NEXT_PUBLIC_SITE_NAME: Idees
+        NEXT_PUBLIC_TWITTER_URL: ""
+        NEXT_PUBLIC_YOUTUBE_URL: ""
+        NEXT_PUBLIC_BLOG_URL: http://localhost:8080
+        NEXT_PUBLIC_BLOG_DOMAIN: localhost
+    restart: "no"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_POCKETBASE_URL=http://localhost:8080
+      - POCKETBASE_INTERNAL_URL=http://pocketbase:8090
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    networks:
+      - idees-test-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  pocketbase:
+    build:
+      context: .
+      dockerfile: Dockerfile.pocketbase
+    restart: "no"
+    volumes:
+      - ./docker-data/test_pb_data:/pb_data
+      - ./pocketbase/pb_migrations:/pb_migrations
+    command: /pocketbase serve --http=0.0.0.0:8090 --origins="http://localhost:8080,http://localhost:3000" --migrationsDir=/pb_migrations
+    networks:
+      - idees-test-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8090/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: "no"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./Caddyfile.test:/etc/caddy/Caddyfile
+    depends_on:
+      app:
+        condition: service_healthy
+      pocketbase:
+        condition: service_healthy
+    networks:
+      - idees-test-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  idees-test-network:
+    driver: bridge

@@ -1,0 +1,35 @@
+:8080 {
+    handle /api/og {
+        reverse_proxy app:3000
+    }
+    handle /api/health {
+        reverse_proxy app:3000
+    }
+
+    handle /api/* {
+        reverse_proxy pocketbase:8090
+    }
+
+    handle /_/* {
+        reverse_proxy pocketbase:8090
+    }
+
+    handle {
+        reverse_proxy app:3000
+    }
+
+    encode gzip
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}

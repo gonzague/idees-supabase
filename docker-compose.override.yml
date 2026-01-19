@@ -1,0 +1,27 @@
+# Local development overrides
+# This file is automatically loaded by docker-compose
+# Add to .gitignore if you don't want to commit it
+
+services:
+  app:
+    build:
+      args:
+        NEXT_PUBLIC_POCKETBASE_URL: http://localhost:8090
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ""
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_POCKETBASE_URL=http://localhost:8090
+      - POCKETBASE_INTERNAL_URL=http://pocketbase:8090
+
+  pocketbase:
+    ports:
+      - "8090:8090"
+    command: /pocketbase serve --http=0.0.0.0:8090 --origins="http://localhost:3000,http://localhost:8090" --migrationsDir=/pb_migrations
+
+  caddy:
+    # Disable Caddy for local dev (not needed)
+    profiles:
+      - production

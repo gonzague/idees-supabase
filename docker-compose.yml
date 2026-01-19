@@ -1,0 +1,48 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
+        NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-Idees}
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
+        NEXT_PUBLIC_TWITTER_URL: ${NEXT_PUBLIC_TWITTER_URL:-}
+        NEXT_PUBLIC_YOUTUBE_URL: ${NEXT_PUBLIC_YOUTUBE_URL:-}
+        NEXT_PUBLIC_BLOG_URL: ${NEXT_PUBLIC_BLOG_URL:-}
+        NEXT_PUBLIC_BLOG_DOMAIN: ${NEXT_PUBLIC_BLOG_DOMAIN:-}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    networks:
+      - idees-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./docker-data/caddy_data:/data
+      - ./docker-data/caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - idees-network
+
+networks:
+  idees-network:
+    driver: bridge
