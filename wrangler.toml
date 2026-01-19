@@ -15,7 +15,7 @@ directory = ".open-next/assets"
 binding = "ASSETS"
 
 [observability.logs]
-enabled = false
+enabled = true
 invocation_logs = true
 
 # Environment variables (non-sensitive)
