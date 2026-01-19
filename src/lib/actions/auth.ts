@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { createServerClient, getCurrentUser } from '@/lib/supabase/server'
+import { createServerClient, createAuthClient, getCurrentUser } from '@/lib/supabase/server'
 import { verifyTurnstileToken } from '@/lib/utils/turnstile'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import type { User } from '@/lib/types'
@@ -35,7 +35,7 @@ export async function signIn(formData: FormData): Promise<{ error?: string }> {
     return { error: 'Email et mot de passe requis' }
   }
 
-  const supabase = await createServerClient()
+  const supabase = await createAuthClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
@@ -71,9 +71,9 @@ export async function signUp(formData: FormData): Promise<{ error?: string }> {
     return { error: 'Les mots de passe ne correspondent pas' }
   }
 
-  const supabase = await createServerClient()
+  const supabase = await createAuthClient()
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -88,11 +88,15 @@ export async function signUp(formData: FormData): Promise<{ error?: string }> {
     return { error: 'Erreur lors de l\'inscription' }
   }
 
+  if (data.user && !data.session) {
+    return { error: 'Vérifiez votre email pour confirmer votre inscription' }
+  }
+
   return {}
 }
 
 export async function signOut() {
-  const supabase = await createServerClient()
+  const supabase = await createAuthClient()
   await supabase.auth.signOut()
   redirect('/')
 }
@@ -117,7 +121,7 @@ export async function requestPasswordReset(formData: FormData): Promise<{ error?
     return { error: 'Email requis' }
   }
 
-  const supabase = await createServerClient()
+  const supabase = await createAuthClient()
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
   await supabase.auth.resetPasswordForEmail(email, {
@@ -143,7 +147,7 @@ export async function confirmPasswordReset(
     return { error: 'Le mot de passe doit contenir au moins 8 caractères' }
   }
 
-  const supabase = await createServerClient()
+  const supabase = await createAuthClient()
   const { error } = await supabase.auth.updateUser({ password })
 
   if (error) {
