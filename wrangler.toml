@@ -14,6 +14,10 @@ mode = "smart"
 directory = ".open-next/assets"
 binding = "ASSETS"
 
+[observability.logs]
+enabled = false
+invocation_logs = true
+
 # Environment variables (non-sensitive)
 [vars]
 NEXT_PUBLIC_SUPABASE_URL = "https://oxjldqwvwvugupagaplq.supabase.co"
