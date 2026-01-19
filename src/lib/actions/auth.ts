@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { createServerClient, createAuthClient, getCurrentUser } from '@/lib/supabase/server'
+import { createAuthClient, getCurrentUser } from '@/lib/supabase/server'
 import { verifyTurnstileToken } from '@/lib/utils/turnstile'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import type { User } from '@/lib/types'
@@ -36,7 +36,7 @@ export async function signIn(formData: FormData): Promise<{ error?: string }> {
   }
 
   const supabase = await createAuthClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
     return { error: 'Email ou mot de passe incorrect' }

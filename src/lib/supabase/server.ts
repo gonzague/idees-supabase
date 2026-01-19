@@ -65,7 +65,7 @@ export async function createServiceClient(): Promise<SupabaseClientType> {
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-  const supabase = await createServerClient()
+  const supabase = await createAuthClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return null
@@ -78,15 +78,17 @@ export async function getCurrentUser(): Promise<User | null> {
 
   if (!profile) return null
 
+  const p = profile as Database['public']['Tables']['profiles']['Row']
+  
   return {
     id: user.id,
     email: user.email!,
-    username: profile.username,
-    avatar_url: profile.avatar_url,
-    is_admin: profile.is_admin,
-    is_banned: profile.is_banned,
-    created_at: profile.created_at,
-    updated_at: profile.updated_at,
+    username: p.username,
+    avatar_url: p.avatar_url,
+    is_admin: p.is_admin,
+    is_banned: p.is_banned,
+    created_at: p.created_at,
+    updated_at: p.updated_at,
   }
 }
 

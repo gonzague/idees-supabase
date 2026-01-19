@@ -8,8 +8,7 @@ interface TurnstileVerifyResponse {
 export async function verifyTurnstileToken(token: string): Promise<boolean> {
   const secretKey = process.env.TURNSTILE_SECRET_KEY
   
-  if (!secretKey) {
-    console.warn('TURNSTILE_SECRET_KEY not configured, skipping verification')
+  if (!secretKey || process.env.NODE_ENV === 'development') {
     return true
   }
 
