@@ -152,6 +152,9 @@ export const translations = {
       signInFailed: 'Échec de la connexion. Veuillez réessayer.',
       generic: 'Une erreur est survenue. Veuillez réessayer.',
       sessionExpired: 'Votre session a expiré. Veuillez vous reconnecter.',
+      otpExpired: 'Le lien a expiré. Veuillez demander un nouveau lien.',
+      accessDenied: 'Accès refusé. Veuillez réessayer.',
+      invalidLink: 'Le lien est invalide ou a expiré.',
     },
     platforms: {
       youtube: 'YouTube',
@@ -313,6 +316,9 @@ export const translations = {
       signInFailed: 'Sign in failed. Please try again.',
       generic: 'Something went wrong. Please try again.',
       sessionExpired: 'Your session has expired. Please sign in again.',
+      otpExpired: 'The link has expired. Please request a new one.',
+      accessDenied: 'Access denied. Please try again.',
+      invalidLink: 'The link is invalid or has expired.',
     },
     platforms: {
       youtube: 'YouTube',

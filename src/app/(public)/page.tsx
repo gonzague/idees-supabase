@@ -8,7 +8,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { t } from '@/lib/i18n'
 
 interface PageProps {
-  searchParams: Promise<{ filter?: string; sort?: string; error?: string; search?: string; tag?: string; page?: string }>
+  searchParams: Promise<{ filter?: string; sort?: string; error?: string; error_code?: string; error_description?: string; search?: string; tag?: string; page?: string }>
 }
 
 export default async function HomePage({ searchParams }: PageProps) {
@@ -16,6 +16,8 @@ export default async function HomePage({ searchParams }: PageProps) {
   const filter = params.filter as 'all' | 'open' | 'done' | undefined
   const sort = params.sort as 'votes' | 'newest' | undefined
   const error = params.error
+  const errorCode = params.error_code
+  const errorDescription = params.error_description
   const search = params.search
   const tagId = params.tag
   const page = parseInt(params.page || '1', 10)
@@ -41,12 +43,16 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {error && (
+      {(error || errorCode) && (
         <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-md text-sm">
           {error === 'auth_required' && tr.errors.authRequired}
           {error === 'admin_required' && tr.errors.adminRequired}
           {error === 'signin_failed' && tr.errors.signInFailed}
           {error === 'auth_callback_error' && tr.errors.generic}
+          {errorCode === 'otp_expired' && tr.errors.otpExpired}
+          {error === 'access_denied' && !errorCode && tr.errors.accessDenied}
+          {error === 'access_denied' && errorCode === 'otp_expired' && tr.errors.otpExpired}
+          {!error && !errorCode && errorDescription && decodeURIComponent(errorDescription)}
         </div>
       )}
 
