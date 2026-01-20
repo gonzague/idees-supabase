@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@/lib/types'
-import type { Tables } from '@/lib/types/database'
 
 export function useUser() {
   const [user, setUser] = useState<User | null>(null)
@@ -18,16 +17,18 @@ export function useUser() {
       if (authUser) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('*')
+          .select('is_admin, is_banned, created_at, updated_at')
           .eq('id', authUser.id)
-          .single<Tables<'profiles'>>()
+          .single<{ is_admin: boolean; is_banned: boolean; created_at: string; updated_at: string }>()
 
+        const metadata = authUser.user_metadata || {}
+        
         if (profile) {
           setUser({
             id: authUser.id,
             email: authUser.email!,
-            username: profile.username,
-            avatar_url: profile.avatar_url,
+            username: metadata.username || authUser.email?.split('@')[0] || null,
+            avatar_url: metadata.avatar_url || null,
             is_admin: profile.is_admin,
             is_banned: profile.is_banned,
             created_at: profile.created_at,

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
-import { createServerClient, getCurrentUser } from '@/lib/supabase/server'
+import { createServerClient, getCurrentUser, getUsersMetadata } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { verifyTurnstileToken } from '@/lib/utils/turnstile'
 import type { CommentWithUser } from '@/lib/types'
@@ -31,28 +31,15 @@ export async function getComments(suggestionId: string): Promise<CommentWithUser
     if (!comments) return []
 
     const userIds = [...new Set(comments.map(c => c.user_id))]
-    const profilesMap = new Map<string, { id: string; username: string | null; avatar_url: string | null }>()
-    
-    if (userIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .in('id', userIds)
-      
-      if (profiles) {
-        for (const profile of profiles) {
-          profilesMap.set(profile.id, profile)
-        }
-      }
-    }
+    const usersMetadata = await getUsersMetadata(userIds)
 
     return comments.map(comment => {
-      const profile = profilesMap.get(comment.user_id)
+      const userMeta = usersMetadata.get(comment.user_id)
       return {
         ...comment,
-        author_username: profile?.username,
-        author_avatar_url: profile?.avatar_url,
-        author_id: profile?.id,
+        author_username: userMeta?.username,
+        author_avatar_url: userMeta?.avatar_url,
+        author_id: comment.user_id,
       }
     })
   } catch (error) {

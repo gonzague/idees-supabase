@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createServerClient, createServiceClient, getCurrentUser, isAdmin } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient, getCurrentUser, isAdmin, getUsersMetadata } from '@/lib/supabase/server'
 import { fetchLinkMetadata, detectPlatform } from '@/lib/utils/thumbnails'
 import { sendEmail, generateIdeaCompletedEmail, generateFollowedIdeaCompletedEmail } from '@/lib/utils/email'
 import { getFollowersWithEmail } from '@/lib/actions/follows'
@@ -39,11 +39,8 @@ export async function markSuggestionDone(
       return { error: 'Suggestion non trouvée' }
     }
 
-    const { data: authorProfile } = await supabase
-      .from('profiles')
-      .select('id, username, avatar_url')
-      .eq('id', suggestion.user_id)
-      .single()
+    const usersMetadata = await getUsersMetadata([suggestion.user_id])
+    const authorMeta = usersMetadata.get(suggestion.user_id)
 
     const { error: updateError } = await supabase
       .from('suggestions')
@@ -86,30 +83,28 @@ export async function markSuggestionDone(
     const baseUrl = SITE_URL
     const ideaUrl = `${baseUrl}/suggestions/${suggestionId}`
     
-    if (authorProfile) {
-      const serviceClient = await createServiceClient()
-      const { data: { users } } = await serviceClient.auth.admin.listUsers()
-      const authorUser = users?.find(u => u.id === authorProfile.id)
+    const serviceClient = await createServiceClient()
+    const { data: { users: authUsers } } = await serviceClient.auth.admin.listUsers()
+    const authorUser = authUsers?.find(u => u.id === suggestion.user_id)
+    
+    if (authorUser?.email) {
+      const emailHtml = generateIdeaCompletedEmail(
+        authorMeta?.username || 'Utilisateur',
+        suggestion.title,
+        ideaUrl,
+        createdLinks
+      )
       
-      if (authorUser?.email) {
-        const emailHtml = generateIdeaCompletedEmail(
-          authorProfile.username || 'Utilisateur',
-          suggestion.title,
-          ideaUrl,
-          createdLinks
-        )
-        
-        sendEmail({
-          to: authorUser.email,
-          subject: `Votre suggestion "${suggestion.title}" a été réalisée !`,
-          html: emailHtml,
-        }).catch(err => console.error('Failed to send author notification email:', err))
-      }
+      sendEmail({
+        to: authorUser.email,
+        subject: `Votre suggestion "${suggestion.title}" a été réalisée !`,
+        html: emailHtml,
+      }).catch(err => console.error('Failed to send author notification email:', err))
     }
 
     const followers = await getFollowersWithEmail(suggestionId)
     for (const follower of followers) {
-      if (follower.id === authorProfile?.id) continue
+      if (follower.id === suggestion.user_id) continue
       
       const followerEmailHtml = generateFollowedIdeaCompletedEmail(
         follower.username,
@@ -297,24 +292,28 @@ export async function getUsers(): Promise<User[]> {
     
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, is_admin, is_banned, created_at, updated_at')
       .order('created_at', { ascending: false })
 
     if (!profiles) return []
 
     const { data: { users: authUsers } } = await supabase.auth.admin.listUsers()
-    const emailMap = new Map(authUsers?.map(u => [u.id, u.email]) || [])
+    const authUserMap = new Map(authUsers?.map(u => [u.id, u]) || [])
 
-    return profiles.map(profile => ({
-      id: profile.id,
-      email: emailMap.get(profile.id) || '',
-      username: profile.username,
-      avatar_url: profile.avatar_url,
-      is_admin: profile.is_admin,
-      is_banned: profile.is_banned,
-      created_at: profile.created_at,
-      updated_at: profile.updated_at,
-    }))
+    return profiles.map(profile => {
+      const authUser = authUserMap.get(profile.id)
+      const metadata = authUser?.user_metadata || {}
+      return {
+        id: profile.id,
+        email: authUser?.email || '',
+        username: metadata.username || authUser?.email?.split('@')[0] || null,
+        avatar_url: metadata.avatar_url || null,
+        is_admin: profile.is_admin,
+        is_banned: profile.is_banned,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at,
+      }
+    })
   } catch (error) {
     console.error('Get users error:', error)
     return []
@@ -472,36 +471,32 @@ export async function getAllComments(): Promise<(CommentWithUser & { suggestion_
     if (error) throw error
     if (!comments) return []
 
-    const results: (CommentWithUser & { suggestion_title?: string })[] = []
+    const userIds = [...new Set(comments.map(c => c.user_id))]
+    const usersMetadata = await getUsersMetadata(userIds)
+
+    const suggestionIds = [...new Set(comments.map(c => c.suggestion_id))]
+    const { data: suggestions } = await supabase
+      .from('suggestions')
+      .select('id, title')
+      .in('id', suggestionIds)
     
-    for (const comment of comments) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .eq('id', comment.user_id)
-        .single()
-      
-      const { data: suggestion } = await supabase
-        .from('suggestions')
-        .select('title')
-        .eq('id', comment.suggestion_id)
-        .single()
-      
-      results.push({
+    const suggestionTitleMap = new Map(suggestions?.map(s => [s.id, s.title]) || [])
+
+    return comments.map(comment => {
+      const userMeta = usersMetadata.get(comment.user_id)
+      return {
         id: comment.id,
         user_id: comment.user_id,
         suggestion_id: comment.suggestion_id,
         content: comment.content,
         created_at: comment.created_at,
         updated_at: comment.updated_at,
-        author_username: profile?.username,
-        author_avatar_url: profile?.avatar_url,
-        author_id: profile?.id,
-        suggestion_title: suggestion?.title,
-      })
-    }
-    
-    return results
+        author_username: userMeta?.username,
+        author_avatar_url: userMeta?.avatar_url,
+        author_id: comment.user_id,
+        suggestion_title: suggestionTitleMap.get(comment.suggestion_id),
+      }
+    })
   } catch (error) {
     console.error('Get all comments error:', error)
     return []

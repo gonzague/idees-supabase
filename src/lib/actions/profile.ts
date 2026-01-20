@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
-import { createServerClient, getCurrentUser } from '@/lib/supabase/server'
+import { createAuthClient, getCurrentUser } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 
 async function getClientIP(): Promise<string> {
@@ -34,12 +34,11 @@ export async function updateUsername(username: string): Promise<{ success: boole
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createAuthClient()
     
-    const { error } = await supabase
-      .from('profiles')
-      .update({ username })
-      .eq('id', user.id)
+    const { error } = await supabase.auth.updateUser({
+      data: { username }
+    })
 
     if (error) throw error
 
@@ -64,7 +63,7 @@ export async function updateEmail(email: string): Promise<{ success: boolean; er
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createAuthClient()
     const { error } = await supabase.auth.updateUser({ email })
 
     if (error) throw error
@@ -105,7 +104,7 @@ export async function updatePassword(
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createAuthClient()
     
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: user.email,
@@ -148,7 +147,7 @@ export async function updateAvatar(formData: FormData): Promise<{ success: boole
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createAuthClient()
     
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/avatar.${fileExt}`
@@ -163,10 +162,9 @@ export async function updateAvatar(formData: FormData): Promise<{ success: boole
       .from('avatars')
       .getPublicUrl(fileName)
 
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ avatar_url: publicUrl })
-      .eq('id', user.id)
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { avatar_url: publicUrl }
+    })
 
     if (updateError) throw updateError
 
@@ -186,7 +184,7 @@ export async function removeAvatar(): Promise<{ success: boolean; error?: string
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createAuthClient()
     
     const { data: files } = await supabase.storage
       .from('avatars')
@@ -197,10 +195,9 @@ export async function removeAvatar(): Promise<{ success: boolean; error?: string
       await supabase.storage.from('avatars').remove(filesToRemove)
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ avatar_url: null })
-      .eq('id', user.id)
+    const { error } = await supabase.auth.updateUser({
+      data: { avatar_url: null }
+    })
 
     if (error) throw error
 

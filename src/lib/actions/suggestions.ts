@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import { createServerClient, getCurrentUser } from '@/lib/supabase/server'
+import { createServerClient, getCurrentUser, getUsersMetadata } from '@/lib/supabase/server'
 import { verifyTurnstileToken } from '@/lib/utils/turnstile'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { SUGGESTION_TITLE_MIN, SUGGESTION_TITLE_MAX, SUGGESTION_DESC_MAX } from '@/lib/constants'
@@ -333,21 +333,11 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
       }
     }
 
-    const profilesMap = new Map<string, { id: string; username: string | null; avatar_url: string | null }>()
     const tagsMap = new Map<string, Tag[]>()
+    const userIds = suggestionIds.length > 0 ? [...new Set(suggestions.map(s => s.user_id))] : []
+    const usersMetadata = await getUsersMetadata(userIds)
     
     if (suggestionIds.length > 0) {
-      const userIds = [...new Set(suggestions.map(s => s.user_id))]
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .in('id', userIds)
-      
-      if (profiles) {
-        for (const profile of profiles) {
-          profilesMap.set(profile.id, profile)
-        }
-      }
       
       const { data: suggestionTags } = await supabase
         .from('suggestion_tags')
@@ -379,8 +369,8 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
       }
     }
 
-    let items: SuggestionWithVotes[] = suggestions.map((s) => {
-      const profile = profilesMap.get(s.user_id)
+    const items: SuggestionWithVotes[] = suggestions.map((s) => {
+      const userMeta = usersMetadata.get(s.user_id)
       
       return {
         ...s,
@@ -388,9 +378,9 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
         has_voted: userVotes.has(s.id),
         links: linksMap.get(s.id) || [],
         tags: tagsMap.get(s.id) || [],
-        author_username: profile?.username,
-        author_avatar_url: profile?.avatar_url,
-        author_id: profile?.id,
+        author_username: userMeta?.username,
+        author_avatar_url: userMeta?.avatar_url,
+        author_id: s.user_id,
       } as SuggestionWithVotes
     })
 
@@ -436,11 +426,8 @@ export async function getSuggestion(id: string): Promise<SuggestionWithVotes | n
       return null
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id, username, avatar_url')
-      .eq('id', suggestion.user_id)
-      .single()
+    const usersMetadata = await getUsersMetadata([suggestion.user_id])
+    const userMeta = usersMetadata.get(suggestion.user_id)
 
     const { data: suggestionTags } = await supabase
       .from('suggestion_tags')
@@ -478,9 +465,9 @@ export async function getSuggestion(id: string): Promise<SuggestionWithVotes | n
       has_voted: hasVoted,
       links: links || [],
       tags,
-      author_username: profile?.username,
-      author_avatar_url: profile?.avatar_url,
-      author_id: profile?.id,
+      author_username: userMeta?.username,
+      author_avatar_url: userMeta?.avatar_url,
+      author_id: suggestion.user_id,
     } as SuggestionWithVotes
   } catch (error) {
     console.error('Get suggestion error:', error)
