@@ -24,7 +24,7 @@ export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || 'Idees'
 /**
  * GitHub repository URL (for "Powered by" link in footer)
  */
-export const GITHUB_REPO_URL = 'https://github.com/gonzague/idees'
+export const GITHUB_REPO_URL = 'https://github.com/gonzague/idees-supabase'
 
 // =============================================================================
 // Social Links (optional - leave empty to hide)
@@ -34,19 +34,19 @@ export const GITHUB_REPO_URL = 'https://github.com/gonzague/idees'
  * Twitter/X profile URL
  * @example "https://twitter.com/username"
  */
-export const TWITTER_URL = process.env.NEXT_PUBLIC_TWITTER_URL || ''
+export const TWITTER_URL = process.env.NEXT_PUBLIC_TWITTER_URL || 'https://x.com/gonzague'
 
 /**
  * YouTube channel URL
  * @example "https://youtube.com/@channelname"
  */
-export const YOUTUBE_URL = process.env.NEXT_PUBLIC_YOUTUBE_URL || ''
+export const YOUTUBE_URL = process.env.NEXT_PUBLIC_YOUTUBE_URL || 'https://www.youtube.com/gonzaguedambricourt'
 
 /**
  * Blog/Website URL
  * @example "https://blog.example.com"
  */
-export const BLOG_URL = process.env.NEXT_PUBLIC_BLOG_URL || ''
+export const BLOG_URL = process.env.NEXT_PUBLIC_BLOG_URL || 'https://gonzague.me/'
 
 // =============================================================================
 // External Content Integration (optional)
@@ -64,7 +64,7 @@ export const WORDPRESS_API_URL = process.env.WORDPRESS_API_URL || ''
  * Used for thumbnail fetching and platform detection
  * @example "blog.example.com"
  */
-export const BLOG_DOMAIN = process.env.NEXT_PUBLIC_BLOG_DOMAIN || ''
+export const BLOG_DOMAIN = process.env.NEXT_PUBLIC_BLOG_DOMAIN || 'gonzague.me'
 
 // =============================================================================
 // Helper Functions
