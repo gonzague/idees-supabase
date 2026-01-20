@@ -1,8 +1,8 @@
 # Idees
 
-<img width="800" height="800" alt="Idees-Gonzague" src="https://github.com/user-attachments/assets/d0df52ec-c07b-4113-a7e9-3c8d790685f9" />
+<img width="800" height="800" alt="Idees" src="https://github.com/user-attachments/assets/d0df52ec-c07b-4113-a7e9-3c8d790685f9" />
 
-A collaborative topic suggestion platform where users can propose ideas and vote on them. Built with Next.js 16 and PocketBase.
+A collaborative topic suggestion platform where users can propose ideas and vote on them. Built with Next.js 15, React 19, and Supabase.
 
 ## Features
 
@@ -27,7 +27,7 @@ A collaborative topic suggestion platform where users can propose ideas and vote
 - **Content Search** - Search YouTube/web to find related content when marking done
 
 ### Technical Features
-- **Email Notifications** - Automated emails when suggestions are completed (to author and followers)
+- **Email Notifications** - Automated emails when suggestions are completed
 - **OG Image Generation** - Dynamic social preview images for each suggestion
 - **Cloudflare Turnstile** - CAPTCHA protection on forms
 - **Responsive Design** - Mobile-first, works on all devices
@@ -35,225 +35,293 @@ A collaborative topic suggestion platform where users can propose ideas and vote
 
 ## Tech Stack
 
-- **Frontend**: Next.js 16, React 19, Tailwind CSS 4
-- **Backend**: PocketBase (SQLite)
-- **Deployment**: Docker, Caddy (HTTPS)
+- **Frontend**: Next.js 15, React 19, Tailwind CSS 4
+- **Backend**: Supabase (PostgreSQL + Auth + Storage)
+- **Deployment**: Cloudflare Pages (via OpenNext)
 
-## Local Development
+---
+
+## Quick Start (Local Development)
 
 ### Prerequisites
 
 - Node.js 20+
-- PocketBase binary
+- A Supabase account (free tier works)
 
-### Setup
+### 1. Clone & Install
 
-1. Clone the repository:
 ```bash
-git clone https://github.com/gonzague/idees.git
-cd idees
-```
-
-2. Install dependencies:
-```bash
+git clone https://github.com/gonzague/idees-supabase.git
+cd idees-supabase
 npm install
 ```
 
-3. Copy environment file:
+### 2. Create Supabase Project
+
+1. Go to [supabase.com/dashboard](https://supabase.com/dashboard)
+2. Click **New Project**
+3. Choose organization, name your project, set a database password, select region
+4. Wait for project to be ready (~2 minutes)
+
+### 3. Get Your Supabase Credentials
+
+From your project dashboard, go to **Settings > API**:
+
+| Credential | Where to find it |
+|------------|------------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `anon` `public` key |
+| `SUPABASE_SERVICE_ROLE_KEY` | `service_role` key (keep secret!) |
+
+### 4. Configure Environment
+
 ```bash
 cp .env.example .env.local
 ```
 
-4. Start PocketBase:
-```bash
-cd pocketbase
-./pocketbase serve
+Edit `.env.local` with your credentials:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_NAME=Idees
 ```
 
-5. Start Next.js development server:
+### 5. Run Database Migrations
+
+In Supabase Dashboard, go to **SQL Editor** and run these files in order:
+
+1. `supabase/migrations/00001_initial_schema.sql`
+2. `supabase/migrations/00002_rls_policies.sql`
+3. `supabase/migrations/00003_functions.sql`
+4. `supabase/migrations/00004_storage.sql`
+
+### 6. Start Development Server
+
 ```bash
 npm run dev
 ```
 
-6. Open http://localhost:3000
+Open [http://localhost:3000](http://localhost:3000)
 
-### First-Time Setup
+### 7. Create Admin User
 
-1. Go to http://127.0.0.1:8090/_/ to access PocketBase Admin
-2. Create an admin account
-3. The migrations will auto-apply on first run
+1. Sign up through the app
+2. In Supabase Dashboard > SQL Editor, run:
 
-## Production Deployment
+```sql
+UPDATE public.profiles SET is_admin = true WHERE id = 'YOUR_USER_ID';
+```
 
-### Using Docker Compose
+(Find your user ID in Authentication > Users)
 
-#### Quick Deploy (Recommended)
+---
 
-Use the interactive deployment assistant:
+## Supabase Configuration
+
+### Storage Buckets
+
+The migration creates two storage buckets automatically:
+- **avatars** - User profile pictures
+- **thumbnails** - Suggestion thumbnails
+
+If you need to create them manually:
+
+1. Go to **Storage** in Supabase Dashboard
+2. Create bucket `avatars` (public)
+3. Create bucket `thumbnails` (public)
+
+### Email Configuration (Authentication)
+
+Supabase handles auth emails (confirmation, password reset). To customize:
+
+1. Go to **Authentication > Email Templates**
+2. Customize the templates as needed
+3. For production, configure a custom SMTP:
+   - Go to **Settings > Auth > SMTP Settings**
+   - Enable "Custom SMTP"
+   - Enter your SMTP credentials
+
+### Email Configuration (App Notifications)
+
+The app sends email notifications when suggestions are completed. Configure SMTP:
+
+```env
+SMTP2GO_API_KEY=your-api-key
+SMTP_FROM=noreply@yourdomain.com
+```
+
+We use [SMTP2Go](https://www.smtp2go.com/) (free tier: 1000 emails/month), but any SMTP service works.
+
+---
+
+## Production Deployment (Cloudflare Pages)
+
+### Prerequisites
+
+- Cloudflare account
+- Wrangler CLI: `npm install -g wrangler`
+
+### 1. Build for Cloudflare
 
 ```bash
-git clone https://github.com/gonzague/idees.git
-cd idees
-./deploy.sh
+npm run build:cloudflare
 ```
 
-The interactive menu provides:
-- **Deploy / Redeploy** - Full deployment with configuration wizard
-- **Test deployment locally** - Test the full Docker stack on localhost
-- **Configure settings** - Update domain, SMTP, Turnstile, etc.
-- **View service status** - Check running containers
-- **View logs** - See recent container logs
-- **Stop services** - Shutdown all containers
+This uses [OpenNext](https://opennext.js.org/) to build a Cloudflare-compatible bundle.
 
-**CLI Options:**
-- `./deploy.sh --quick` - Quick deploy using saved configuration
-- `./deploy.sh --help` - Show help
+### 2. Configure wrangler.toml
 
-The assistant will:
-- Check prerequisites (Docker, Docker Compose)
-- Create required data directories
-- Guide you through configuration (domain, site name, SMTP, Turnstile, etc.)
-- Update configuration files automatically
-- Build and deploy all services (Next.js, PocketBase, Caddy)
+Edit `wrangler.toml` with your settings:
 
-#### Testing Deployment Locally
+```toml
+name = "idees"
+main = ".open-next/worker.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
 
-Before deploying to production, you can test the full Docker stack locally:
+[placement]
+mode = "smart"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[vars]
+NEXT_PUBLIC_SUPABASE_URL = "https://your-project.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "your-anon-key"
+NEXT_PUBLIC_SITE_URL = "https://yourdomain.com"
+NEXT_PUBLIC_SITE_NAME = "Your Site Name"
+```
+
+### 3. Set Secret Environment Variables
 
 ```bash
-./deploy.sh
-# Select option 2: "Test deployment locally"
+wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+# Paste your service role key when prompted
+
+wrangler secret put SMTP2GO_API_KEY
+# Paste your SMTP API key when prompted
 ```
 
-Or run directly:
+### 4. Deploy
+
 ```bash
-npm run test:deploy
+npm run deploy
 ```
 
-This will:
-- Build all Docker images (Next.js, PocketBase, Caddy)
-- Start containers with health checks
-- Run automated tests (health endpoints, routing, connectivity)
-- Show URLs to test manually at `http://localhost:8080`
-- Optionally keep services running for manual testing
-- Clean up automatically when done
+Or manually:
 
-#### Manual Setup
-
-1. Clone to your server:
 ```bash
-git clone https://github.com/gonzague/idees.git
-cd idees
+wrangler deploy
 ```
 
-2. Create data directories:
-```bash
-mkdir -p docker-data/pb_data docker-data/pb_public docker-data/caddy_data docker-data/caddy_config
-```
+### 5. Configure Custom Domain (Optional)
 
-3. Update domain in files (if not already set):
-   - `docker-compose.yml` - Update `NEXT_PUBLIC_POCKETBASE_URL` build arg and environment variable, and PocketBase origins in the command.
-   - `Caddyfile` - Update domain name.
+1. In Cloudflare Dashboard > Workers & Pages > your project
+2. Go to **Custom Domains**
+3. Add your domain
+4. Update DNS as instructed
 
-4. Deploy:
-```bash
-docker compose -f docker-compose.yml up -d --build
-```
+### 6. Update Supabase Settings
 
-> **Note:** The `-f docker-compose.yml` flag ensures Caddy is included. Without it, Docker may use a local override file that disables Caddy for development.
+After deployment, update your Supabase project:
 
-5. Set up PocketBase admin:
-   - Visit https://yourdomain.com/_/
-   - Create admin account
-   - Verify collections are created
+1. **Authentication > URL Configuration**:
+   - Site URL: `https://yourdomain.com`
+   - Redirect URLs: Add `https://yourdomain.com/**`
 
-### Architecture
+2. **Authentication > Email Templates**:
+   - Update any hardcoded URLs to your domain
 
-```
-                    +-------------+
-                    |   Caddy     |
-                    |  (HTTPS)    |
-                    |   :80/:443  |
-                    +------+------+
-                           |
-           +---------------+---------------+
-           |               |               |
-           v               v               v
-    +----------+    +----------+    +----------+
-    |  Next.js |    |   /api/* |    |   /_/*   |
-    |   :3000  |    |          |    |          |
-    +----------+    +----+-----+    +----+-----+
-                         |               |
-                         v               v
-                    +---------------------+
-                    |     PocketBase      |
-                    |       :8090         |
-                    +---------------------+
-```
+---
 
-### Environment Variables
+## Environment Variables Reference
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_POCKETBASE_URL` | PocketBase API URL | `http://127.0.0.1:8090` |
-| `NODE_ENV` | Environment mode | `development` |
+### Required
 
-### Health Check
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
+| `NEXT_PUBLIC_SITE_URL` | Your site's public URL |
+| `NEXT_PUBLIC_SITE_NAME` | Display name for your site |
 
-The application exposes a health endpoint at `/api/health` that returns:
+### Optional - Social Links (shown in footer)
 
-```json
-{
-  "status": "healthy",
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "services": {
-    "app": "healthy",
-    "pocketbase": "healthy"
-  }
-}
-```
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_TWITTER_URL` | Your Twitter/X profile URL |
+| `NEXT_PUBLIC_YOUTUBE_URL` | Your YouTube channel URL |
+| `NEXT_PUBLIC_BLOG_URL` | Your blog/website URL |
+| `NEXT_PUBLIC_BLOG_DOMAIN` | Domain for blog link detection |
+
+### Optional - Integrations
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile site key |
+| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile secret key |
+| `YOUTUBE_API_KEY` | YouTube Data API key (for content search) |
+| `YOUTUBE_CHANNEL_ID` | Your YouTube channel ID |
+| `SMTP2GO_API_KEY` | SMTP2Go API key for notifications |
+| `SMTP_FROM` | From address for notification emails |
+| `WORDPRESS_API_URL` | WordPress REST API URL (for blog search) |
+
+---
 
 ## Project Structure
 
 ```
-idees/
+idees-supabase/
 ├── src/
-│   ├── app/                 # Next.js app router
-│   │   ├── (admin)/        # Admin routes
-│   │   ├── (public)/       # Public routes
-│   │   └── api/            # API routes
-│   ├── components/         # React components
-│   │   ├── admin/         # Admin components
-│   │   ├── auth/          # Auth components
-│   │   ├── layout/        # Layout components
-│   │   ├── suggestions/   # Suggestion components
-│   │   └── ui/            # UI primitives
-│   └── lib/               # Utilities
-│       ├── actions/       # Server actions
-│       ├── i18n/          # Translations
-│       ├── pocketbase/    # PocketBase client
-│       ├── types/         # TypeScript types
-│       └── utils/         # Helper functions
-├── pocketbase/
-│   └── pb_migrations/     # Database migrations
-├── docker-compose.yml     # Production Docker config
-├── docker-compose.test.yml # Local testing config (HTTP)
-├── Dockerfile            # Next.js container
-├── Dockerfile.pocketbase # PocketBase container
-├── Caddyfile            # Production Caddy config (HTTPS)
-├── Caddyfile.test       # Test Caddy config (HTTP)
-├── deploy.sh            # Interactive deployment CLI
-└── test-deployment.sh   # Automated deployment tests
+│   ├── app/                    # Next.js App Router
+│   │   ├── (admin)/           # Admin routes
+│   │   ├── (public)/          # Public routes
+│   │   └── api/               # API routes
+│   ├── components/            # React components
+│   │   ├── admin/            # Admin components
+│   │   ├── auth/             # Auth components
+│   │   ├── layout/           # Layout components
+│   │   ├── suggestions/      # Suggestion components
+│   │   └── ui/               # UI primitives
+│   └── lib/
+│       ├── actions/          # Server actions
+│       ├── supabase/         # Supabase clients
+│       ├── types/            # TypeScript types
+│       └── utils/            # Helper functions
+├── supabase/
+│   └── migrations/           # SQL migration files
+├── wrangler.toml             # Cloudflare Workers config
+└── open-next.config.ts       # OpenNext config
 ```
 
-## Security Features
+---
 
-- **HTTP-only cookies** for authentication
-- **CSRF protection** via Next.js server actions
-- **XSS protection** headers via Caddy and Next.js
-- **Rate limiting** on sensitive endpoints
-- **Input sanitization** for user content
-- **Content Security Policy** headers
+## Troubleshooting
+
+### "Invalid API key" errors
+- Verify your Supabase URL and keys in `.env.local`
+- Make sure you're using the correct key (anon for client, service_role for server)
+
+### Auth not persisting
+- Check that your `NEXT_PUBLIC_SITE_URL` matches your actual URL
+- Verify Supabase Auth URL Configuration includes your domain
+
+### Storage upload fails
+- Check storage bucket policies in Supabase Dashboard
+- Ensure the bucket exists and is set to public
+
+### Emails not sending
+- Verify SMTP credentials
+- Check Supabase Auth email settings for confirmation emails
+- For app notifications, verify `SMTP2GO_API_KEY` and `SMTP_FROM`
+
+---
 
 ## License
 
