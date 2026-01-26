@@ -14,7 +14,8 @@ export interface MarkDoneState {
 
 export async function markSuggestionDone(
   suggestionId: string,
-  links: { platform: LinkPlatform; url: string }[]
+  links: { platform: LinkPlatform; url: string }[],
+  doneComment?: string
 ): Promise<MarkDoneState> {
   const user = await getCurrentUser()
   if (!user) {
@@ -48,6 +49,7 @@ export async function markSuggestionDone(
         status: 'done' as const,
         done_at: new Date().toISOString(),
         done_by: user.id,
+        done_comment: doneComment?.trim() || null,
       })
       .eq('id', suggestionId)
 
@@ -156,6 +158,7 @@ export async function reopenSuggestion(suggestionId: string): Promise<MarkDoneSt
         status: 'open',
         done_at: null,
         done_by: null,
+        done_comment: null,
       })
       .eq('id', suggestionId)
 
@@ -234,6 +237,34 @@ export async function deleteLinkFromSuggestion(linkId: string): Promise<{ succes
   } catch (error) {
     console.error('Delete link error:', error)
     return { success: false, error: 'Échec de la suppression' }
+  }
+}
+
+export async function updateDoneComment(
+  suggestionId: string,
+  doneComment: string | null
+): Promise<{ success: boolean; error?: string }> {
+  const user = await getCurrentUser()
+  if (!user?.is_admin) {
+    return { success: false, error: 'Admin requis' }
+  }
+
+  try {
+    const supabase = await createServiceClient()
+    const { error } = await supabase
+      .from('suggestions')
+      .update({ done_comment: doneComment?.trim() || null })
+      .eq('id', suggestionId)
+
+    if (error) throw error
+
+    revalidatePath(`/suggestions/${suggestionId}`)
+    revalidatePath('/admin')
+    
+    return { success: true }
+  } catch (error) {
+    console.error('Update done comment error:', error)
+    return { success: false, error: 'Échec de la mise à jour' }
   }
 }
 

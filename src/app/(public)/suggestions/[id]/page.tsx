@@ -185,6 +185,18 @@ export default async function SuggestionDetailPage({ params }: PageProps) {
             <p className="text-gray-400 dark:text-gray-500 italic">Aucune description fournie</p>
           )}
 
+          {isDone && suggestion.done_comment && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <h3 className="font-semibold text-green-800 dark:text-green-300">{i18n.suggestion.authorNote}</h3>
+              </div>
+              <p className="text-green-700 dark:text-green-300 whitespace-pre-wrap">{suggestion.done_comment}</p>
+            </div>
+          )}
+
           {suggestion.links && suggestion.links.length > 0 && (
             <SuggestionLinks links={suggestion.links} />
           )}

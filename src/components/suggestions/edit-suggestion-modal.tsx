@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { TagIconPicker } from '@/components/admin/tag-icon-picker'
 import { updateSuggestion } from '@/lib/actions/suggestions'
-import { addLinkToSuggestion, deleteLinkFromSuggestion, markSuggestionDone, reopenSuggestion } from '@/lib/actions/admin'
+import { addLinkToSuggestion, deleteLinkFromSuggestion, markSuggestionDone, reopenSuggestion, updateDoneComment } from '@/lib/actions/admin'
 import { SuggestionWithVotes, Tag, SuggestionLink } from '@/lib/types'
 import { SUGGESTION_TITLE_MIN, SUGGESTION_TITLE_MAX, SUGGESTION_DESC_MAX, PLATFORM_LABELS } from '@/lib/constants'
 import { t } from '@/lib/i18n'
@@ -31,6 +31,8 @@ export function EditSuggestionModal({ suggestion, tags, onClose, showLinks = fal
   const [linkPending, setLinkPending] = useState(false)
   const [status, setStatus] = useState<'open' | 'done'>(suggestion.status)
   const [statusPending, setStatusPending] = useState(false)
+  const [doneComment, setDoneComment] = useState(suggestion.done_comment || '')
+  const [doneCommentPending, setDoneCommentPending] = useState(false)
   const i18n = t()
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -97,15 +99,29 @@ export function EditSuggestionModal({ suggestion, tags, onClose, showLinks = fal
     setError(null)
 
     const result = newStatus === 'done'
-      ? await markSuggestionDone(suggestion.id, [])
+      ? await markSuggestionDone(suggestion.id, [], doneComment || undefined)
       : await reopenSuggestion(suggestion.id)
 
     if (result.success) {
       setStatus(newStatus)
+      if (newStatus === 'open') {
+        setDoneComment('')
+      }
     } else {
       setError(result.error || 'Erreur lors du changement de statut')
     }
     setStatusPending(false)
+  }
+
+  const handleSaveDoneComment = async () => {
+    setDoneCommentPending(true)
+    setError(null)
+
+    const result = await updateDoneComment(suggestion.id, doneComment || null)
+    if (!result.success) {
+      setError(result.error || 'Erreur lors de la sauvegarde')
+    }
+    setDoneCommentPending(false)
   }
 
   const modal = (
@@ -264,6 +280,31 @@ export function EditSuggestionModal({ suggestion, tags, onClose, showLinks = fal
                 </div>
                 {statusPending && <p className="text-xs text-gray-500 mt-1">Mise à jour...</p>}
               </div>
+
+              {status === 'done' && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Note de l&apos;auteur (optionnel)</label>
+                  <Textarea
+                    value={doneComment}
+                    onChange={(e) => setDoneComment(e.target.value)}
+                    placeholder="Ajoutez un commentaire pour expliquer la solution ou donner des informations complémentaires..."
+                    maxLength={2000}
+                    rows={3}
+                  />
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-gray-500">Ce message sera affiché sur la page de la suggestion</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSaveDoneComment}
+                      disabled={doneCommentPending}
+                    >
+                      {doneCommentPending ? '...' : 'Sauvegarder'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
 

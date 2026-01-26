@@ -26,6 +26,7 @@ export const translations = {
       by: 'par',
       votes: 'votes',
       contentAvailable: 'Contenu disponible',
+      authorNote: 'Note de l\'auteur',
       status: {
         open: 'Ouvert',
         done: 'Terminé',
@@ -190,6 +191,7 @@ export const translations = {
       by: 'by',
       votes: 'votes',
       contentAvailable: 'Content available',
+      authorNote: 'Author\'s Note',
       status: {
         open: 'Open',
         done: 'Done',

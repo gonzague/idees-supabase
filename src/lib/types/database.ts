@@ -74,6 +74,7 @@ export interface Database {
           status: 'open' | 'done'
           done_at: string | null
           done_by: string | null
+          done_comment: string | null
           thumbnail_path: string | null
           icon: string | null
           created_at: string
@@ -87,6 +88,7 @@ export interface Database {
           status?: 'open' | 'done'
           done_at?: string | null
           done_by?: string | null
+          done_comment?: string | null
           thumbnail_path?: string | null
           icon?: string | null
           created_at?: string
@@ -100,6 +102,7 @@ export interface Database {
           status?: 'open' | 'done'
           done_at?: string | null
           done_by?: string | null
+          done_comment?: string | null
           thumbnail_path?: string | null
           icon?: string | null
           created_at?: string
