@@ -274,7 +274,9 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
     if (sortBy === 'newest') {
       query = query.order('created_at', { ascending: false })
     } else {
-      query = query.order('created_at', { ascending: false })
+      // Sort by votes with created_at as tiebreaker
+      query = query.order('vote_count', { ascending: false })
+        .order('created_at', { ascending: false })
     }
 
     const from = (page - 1) * limit
@@ -300,20 +302,19 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
 
     const suggestionIds = suggestions.map((s: { id: string }) => s.id)
 
-    const voteCountMap = new Map<string, number>()
     const userVotes = new Set<string>()
     const linksMap = new Map<string, SuggestionLink[]>()
 
     if (suggestionIds.length > 0) {
-      const { data: votes } = await supabase
-        .from('votes')
-        .select('suggestion_id, user_id, voter_id')
-        .in('suggestion_id', suggestionIds)
+      if (user) {
+        const { data: votes } = await supabase
+          .from('votes')
+          .select('suggestion_id')
+          .in('suggestion_id', suggestionIds)
+          .or(`user_id.eq.${user.id},voter_id.eq.${user.id}`)
 
-      if (votes) {
-        for (const vote of votes) {
-          voteCountMap.set(vote.suggestion_id, (voteCountMap.get(vote.suggestion_id) || 0) + 1)
-          if (user && (vote.user_id === user.id || vote.voter_id === user.id)) {
+        if (votes) {
+          for (const vote of votes) {
             userVotes.add(vote.suggestion_id)
           }
         }
@@ -374,7 +375,7 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
       
       return {
         ...s,
-        vote_count: voteCountMap.get(s.id) || 0,
+        vote_count: s.vote_count,
         has_voted: userVotes.has(s.id),
         links: linksMap.get(s.id) || [],
         tags: tagsMap.get(s.id) || [],
@@ -383,10 +384,6 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
         author_id: s.user_id,
       } as SuggestionWithVotes
     })
-
-    if (sortBy === 'votes') {
-      items.sort((a, b) => b.vote_count - a.vote_count)
-    }
 
     const totalItems = count || 0
     const totalPages = Math.ceil(totalItems / limit)

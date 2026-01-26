@@ -79,6 +79,7 @@ export interface Database {
           icon: string | null
           created_at: string
           updated_at: string
+          vote_count: number
         }
         Insert: {
           id?: string
@@ -93,6 +94,7 @@ export interface Database {
           icon?: string | null
           created_at?: string
           updated_at?: string
+          vote_count?: number
         }
         Update: {
           id?: string
@@ -107,6 +109,7 @@ export interface Database {
           icon?: string | null
           created_at?: string
           updated_at?: string
+          vote_count?: number
         }
         Relationships: [
           {

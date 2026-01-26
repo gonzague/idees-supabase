@@ -63,3 +63,6 @@ CLAUDE.md
 # Claude Code local settings
 .claude/
 *.backup
+
+# OpenCode config (contains project-specific MCP references)
+opencode.json
