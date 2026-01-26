@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createServerClient, createServiceClient, getCurrentUser, isAdmin, getUsersMetadata } from '@/lib/supabase/server'
+import { createServiceClient, getCurrentUser, isAdmin, getUsersMetadata } from '@/lib/supabase/server'
 import { fetchLinkMetadata, detectPlatform } from '@/lib/utils/thumbnails'
 import { sendEmail, generateIdeaCompletedEmail, generateFollowedIdeaCompletedEmail } from '@/lib/utils/email'
 import { getFollowersWithEmail } from '@/lib/actions/follows'
@@ -27,7 +27,7 @@ export async function markSuggestionDone(
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServiceClient()
 
     const { data: suggestion, error: fetchError } = await supabase
       .from('suggestions')
@@ -143,7 +143,7 @@ export async function reopenSuggestion(suggestionId: string): Promise<MarkDoneSt
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServiceClient()
 
     await supabase
       .from('suggestion_links')
@@ -182,7 +182,8 @@ export async function addLinkToSuggestion(
   }
 
   try {
-    const supabase = await createServerClient()
+    // Use service client to bypass RLS (admin check already done above)
+    const supabase = await createServiceClient()
     const metadata = await fetchLinkMetadata(url)
     const platform = detectPlatform(url)
 
@@ -218,7 +219,7 @@ export async function deleteLinkFromSuggestion(linkId: string): Promise<{ succes
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase
       .from('suggestion_links')
       .delete()
@@ -238,7 +239,7 @@ export async function deleteLinkFromSuggestion(linkId: string): Promise<{ succes
 
 export async function getAdminStats(): Promise<AdminStats> {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServiceClient()
 
     const { count: totalSuggestions } = await supabase
       .from('suggestions')
@@ -331,7 +332,7 @@ export async function toggleUserAdmin(userId: string): Promise<{ success: boolea
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServiceClient()
     
     const { data: profile } = await supabase
       .from('profiles')
@@ -400,7 +401,7 @@ export async function updateUser(
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase
       .from('profiles')
       .update(data)
@@ -427,7 +428,7 @@ export async function toggleUserBan(userId: string): Promise<{ success: boolean;
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServiceClient()
     
     const { data: profile } = await supabase
       .from('profiles')
@@ -461,7 +462,7 @@ export async function getAllComments(): Promise<(CommentWithUser & { suggestion_
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServiceClient()
     
     const { data: comments, error } = await supabase
       .from('comments')
@@ -510,7 +511,7 @@ export async function adminDeleteComment(commentId: string): Promise<{ success: 
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase
       .from('comments')
       .delete()
@@ -533,7 +534,7 @@ export async function backfillLinkMetadata(): Promise<{ success: boolean; update
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServiceClient()
     
     const { data: links, error: fetchError } = await supabase
       .from('suggestion_links')
