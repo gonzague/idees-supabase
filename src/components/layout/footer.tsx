@@ -53,6 +53,20 @@ export function Footer() {
                 {SITE_NAME}
               </Link>
             </span>
+            {process.env.NEXT_PUBLIC_BUILD_ID && (
+              <>
+                {' '}&middot;{' '}
+                <Link
+                  href={`${GITHUB_REPO_URL}/commit/${process.env.NEXT_PUBLIC_BUILD_ID}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-400 hover:text-slate-500 dark:text-slate-500 dark:hover:text-slate-400 font-mono"
+                  title={`Build: ${process.env.NEXT_PUBLIC_BUILD_TIME || ''}`}
+                >
+                  v{process.env.NEXT_PUBLIC_BUILD_ID}
+                </Link>
+              </>
+            )}
           </p>
         </div>
       </div>
