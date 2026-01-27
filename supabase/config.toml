@@ -1,0 +1,8 @@
+# Supabase CLI Configuration
+# This enables `supabase db push` to apply migrations to remote projects
+# No local Docker stack needed - this is a remote-only workflow
+
+project_id = "idees"
+
+[db]
+major_version = 15

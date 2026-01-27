@@ -41,6 +41,42 @@ A collaborative topic suggestion platform where users can propose ideas and vote
 
 ---
 
+## 🚀 Deploy Your Own Instance
+
+The easiest way to deploy your own Idees instance:
+
+### Prerequisites
+
+- Node.js 20+
+- [Supabase CLI](https://supabase.com/docs/guides/cli): `npm install -g supabase`
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/): `npm install -g wrangler`
+- A [Supabase](https://supabase.com) account (free tier works)
+- A [Cloudflare](https://cloudflare.com) account (free tier works)
+
+### One-Command Setup
+
+```bash
+git clone https://github.com/gonzague/idees-supabase.git
+cd idees-supabase
+npm install
+./setup.sh
+```
+
+The setup script will:
+1. ✅ Check all prerequisites
+2. ✅ Guide you through configuration
+3. ✅ Create your `wrangler.toml` config
+4. ✅ Link to your Supabase project
+5. ✅ Run all database migrations automatically
+
+After setup, deploy with:
+```bash
+npm run build:cloudflare
+npm run deploy
+```
+
+---
+
 ## Quick Start (Local Development)
 
 ### Prerequisites
@@ -92,12 +128,27 @@ NEXT_PUBLIC_SITE_NAME=Idees
 
 ### 5. Run Database Migrations
 
+**Option A: Using Supabase CLI (Recommended)**
+
+```bash
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
+```
+
+This automatically applies all migrations and tracks which ones have been run.
+
+**Option B: Manual (via SQL Editor)**
+
 In Supabase Dashboard, go to **SQL Editor** and run these files in order:
 
-1. `supabase/migrations/00001_initial_schema.sql`
-2. `supabase/migrations/00002_rls_policies.sql`
-3. `supabase/migrations/00003_functions.sql`
-4. `supabase/migrations/00004_storage.sql`
+1. `supabase/migrations/20250101000001_initial_schema.sql`
+2. `supabase/migrations/20250101000002_rls_policies.sql`
+3. `supabase/migrations/20250101000003_functions.sql`
+4. `supabase/migrations/20250101000004_storage.sql`
+5. `supabase/migrations/20250101000005_remove_profile_user_fields.sql`
+6. `supabase/migrations/20250101000006_add_done_comment.sql`
+7. `supabase/migrations/20250101000007_add_vote_count.sql`
 
 ### 6. Start Development Server
 

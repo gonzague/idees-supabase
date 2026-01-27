@@ -66,3 +66,6 @@ CLAUDE.md
 
 # OpenCode config (contains project-specific MCP references)
 opencode.json
+
+# Wrangler config (contains credentials - use wrangler.toml.example as template)
+wrangler.toml

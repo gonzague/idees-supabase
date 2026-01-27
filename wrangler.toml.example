@@ -1,0 +1,30 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "idees"
+main = ".open-next/worker.js"
+compatibility_date = "2025-11-17"
+compatibility_flags = ["nodejs_compat"]
+
+[placement]
+mode = "smart"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[vars]
+NEXT_PUBLIC_SUPABASE_URL = "https://YOUR_PROJECT_REF.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"
+NEXT_PUBLIC_SITE_URL = "https://YOUR_DOMAIN.com"
+NEXT_PUBLIC_SITE_NAME = "Idees"
+NEXT_PUBLIC_TWITTER_URL = ""
+NEXT_PUBLIC_YOUTUBE_URL = ""
+NEXT_PUBLIC_BLOG_URL = ""
+NEXT_PUBLIC_BLOG_DOMAIN = ""
+SMTP_HOST = "mail.smtp2go.com"
+SMTP_PORT = "2525"
+SMTP_USER = ""
+SMTP_FROM = ""
