@@ -12,6 +12,8 @@ export interface Database {
       profiles: {
         Row: {
           id: string
+          username: string | null
+          avatar_url: string | null
           is_admin: boolean
           is_banned: boolean
           created_at: string
@@ -19,6 +21,8 @@ export interface Database {
         }
         Insert: {
           id: string
+          username?: string | null
+          avatar_url?: string | null
           is_admin?: boolean
           is_banned?: boolean
           created_at?: string
@@ -26,6 +30,8 @@ export interface Database {
         }
         Update: {
           id?: string
+          username?: string | null
+          avatar_url?: string | null
           is_admin?: boolean
           is_banned?: boolean
           created_at?: string

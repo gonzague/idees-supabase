@@ -301,52 +301,51 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
     }
 
     const suggestionIds = suggestions.map((s: { id: string }) => s.id)
+    const userIds = suggestionIds.length > 0 ? [...new Set(suggestions.map(s => s.user_id))] : []
 
     const userVotes = new Set<string>()
     const linksMap = new Map<string, SuggestionLink[]>()
+    const tagsMap = new Map<string, Tag[]>()
+    let usersMetadata = new Map<string, { username: string | null; avatar_url: string | null }>()
 
     if (suggestionIds.length > 0) {
-      if (user) {
-        const { data: votes } = await supabase
-          .from('votes')
-          .select('suggestion_id')
-          .in('suggestion_id', suggestionIds)
-          .or(`user_id.eq.${user.id},voter_id.eq.${user.id}`)
+      const [votesResult, linksResult, suggestionTagsResult, usersMetadataResult] = await Promise.all([
+        user
+          ? supabase
+              .from('votes')
+              .select('suggestion_id')
+              .in('suggestion_id', suggestionIds)
+              .or(`user_id.eq.${user.id},voter_id.eq.${user.id}`)
+          : Promise.resolve({ data: null }),
+        supabase
+          .from('suggestion_links')
+          .select('*')
+          .in('suggestion_id', suggestionIds),
+        supabase
+          .from('suggestion_tags')
+          .select('suggestion_id, tag_id')
+          .in('suggestion_id', suggestionIds),
+        getUsersMetadata(userIds),
+      ])
 
-        if (votes) {
-          for (const vote of votes) {
-            userVotes.add(vote.suggestion_id)
-          }
+      usersMetadata = usersMetadataResult
+
+      if (votesResult.data) {
+        for (const vote of votesResult.data) {
+          userVotes.add(vote.suggestion_id)
         }
       }
 
-      const { data: links } = await supabase
-        .from('suggestion_links')
-        .select('*')
-        .in('suggestion_id', suggestionIds)
-
-      if (links) {
-        for (const link of links) {
+      if (linksResult.data) {
+        for (const link of linksResult.data) {
           const existing = linksMap.get(link.suggestion_id) || []
           existing.push(link)
           linksMap.set(link.suggestion_id, existing)
         }
       }
-    }
 
-    const tagsMap = new Map<string, Tag[]>()
-    const userIds = suggestionIds.length > 0 ? [...new Set(suggestions.map(s => s.user_id))] : []
-    const usersMetadata = await getUsersMetadata(userIds)
-    
-    if (suggestionIds.length > 0) {
-      
-      const { data: suggestionTags } = await supabase
-        .from('suggestion_tags')
-        .select('suggestion_id, tag_id')
-        .in('suggestion_id', suggestionIds)
-      
-      if (suggestionTags && suggestionTags.length > 0) {
-        const tagIds = [...new Set(suggestionTags.map(st => st.tag_id))]
+      if (suggestionTagsResult.data && suggestionTagsResult.data.length > 0) {
+        const tagIds = [...new Set(suggestionTagsResult.data.map(st => st.tag_id))]
         const { data: allTags } = await supabase
           .from('tags')
           .select('*')
@@ -359,7 +358,7 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
           }
         }
         
-        for (const st of suggestionTags) {
+        for (const st of suggestionTagsResult.data) {
           const tag = tagById.get(st.tag_id)
           if (tag) {
             const existing = tagsMap.get(st.suggestion_id) || []
@@ -423,17 +422,18 @@ export async function getSuggestion(id: string): Promise<SuggestionWithVotes | n
       return null
     }
 
-    const usersMetadata = await getUsersMetadata([suggestion.user_id])
+    const [usersMetadata, suggestionTagsResult, votesResult, linksResult] = await Promise.all([
+      getUsersMetadata([suggestion.user_id]),
+      supabase.from('suggestion_tags').select('tag_id').eq('suggestion_id', id),
+      supabase.from('votes').select('user_id, voter_id').eq('suggestion_id', id),
+      supabase.from('suggestion_links').select('*').eq('suggestion_id', id),
+    ])
+
     const userMeta = usersMetadata.get(suggestion.user_id)
 
-    const { data: suggestionTags } = await supabase
-      .from('suggestion_tags')
-      .select('tag_id')
-      .eq('suggestion_id', id)
-
     let tags: Tag[] = []
-    if (suggestionTags && suggestionTags.length > 0) {
-      const tagIds = suggestionTags.map(st => st.tag_id)
+    if (suggestionTagsResult.data && suggestionTagsResult.data.length > 0) {
+      const tagIds = suggestionTagsResult.data.map(st => st.tag_id)
       const { data: tagData } = await supabase
         .from('tags')
         .select('*')
@@ -441,26 +441,16 @@ export async function getSuggestion(id: string): Promise<SuggestionWithVotes | n
       tags = tagData || []
     }
 
-    const { data: votes } = await supabase
-      .from('votes')
-      .select('user_id, voter_id')
-      .eq('suggestion_id', id)
-
-    const voteCount = votes?.length || 0
+    const voteCount = votesResult.data?.length || 0
     const hasVoted = user 
-      ? votes?.some((v) => v.user_id === user.id || v.voter_id === user.id) || false
+      ? votesResult.data?.some((v) => v.user_id === user.id || v.voter_id === user.id) || false
       : false
-
-    const { data: links } = await supabase
-      .from('suggestion_links')
-      .select('*')
-      .eq('suggestion_id', id)
 
     return {
       ...suggestion,
       vote_count: voteCount,
       has_voted: hasVoted,
-      links: links || [],
+      links: linksResult.data || [],
       tags,
       author_username: userMeta?.username,
       author_avatar_url: userMeta?.avatar_url,

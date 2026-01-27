@@ -72,18 +72,25 @@ export async function getCurrentUser(): Promise<User | null> {
 
   const { data: profileData } = await supabase
     .from('profiles')
-    .select('id, is_admin, is_banned, created_at, updated_at')
+    .select('id, username, avatar_url, is_admin, is_banned, created_at, updated_at')
     .eq('id', user.id)
     .single()
 
-  const profile = profileData as { is_admin: boolean; is_banned: boolean; created_at: string; updated_at: string } | null
-  const metadata = user.user_metadata || {}
-  
+  const profile = profileData as {
+    id: string
+    username: string | null
+    avatar_url: string | null
+    is_admin: boolean
+    is_banned: boolean
+    created_at: string
+    updated_at: string
+  } | null
+
   return {
     id: user.id,
     email: user.email!,
-    username: metadata.username || user.email?.split('@')[0] || null,
-    avatar_url: metadata.avatar_url || null,
+    username: profile?.username || user.email?.split('@')[0] || null,
+    avatar_url: profile?.avatar_url || null,
     is_admin: profile?.is_admin ?? false,
     is_banned: profile?.is_banned ?? false,
     created_at: profile?.created_at || user.created_at,
@@ -97,8 +104,8 @@ export async function isAdmin(): Promise<boolean> {
 }
 
 /**
- * Fetch user metadata (username, avatar_url) for multiple users from auth.users
- * This uses the service role client to access auth.admin APIs
+ * Fetch user metadata (username, avatar_url) for multiple users from profiles table
+ * This queries only the requested users instead of fetching all users
  */
 export async function getUsersMetadata(userIds: string[]): Promise<Map<string, { username: string | null; avatar_url: string | null }>> {
   const result = new Map<string, { username: string | null; avatar_url: string | null }>()
@@ -106,23 +113,22 @@ export async function getUsersMetadata(userIds: string[]): Promise<Map<string, {
   if (userIds.length === 0) return result
   
   try {
-    const supabase = await createServiceClient()
-    const { data: { users }, error } = await supabase.auth.admin.listUsers()
+    const supabase = await createServerClient()
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', userIds)
     
-    if (error || !users) {
+    if (error || !profiles) {
       console.error('Error fetching users metadata:', error)
       return result
     }
     
-    const userIdSet = new Set(userIds)
-    for (const user of users) {
-      if (userIdSet.has(user.id)) {
-        const metadata = user.user_metadata || {}
-        result.set(user.id, {
-          username: metadata.username || user.email?.split('@')[0] || null,
-          avatar_url: metadata.avatar_url || null,
-        })
-      }
+    for (const profile of profiles) {
+      result.set(profile.id, {
+        username: profile.username || null,
+        avatar_url: profile.avatar_url || null,
+      })
     }
     
     return result
