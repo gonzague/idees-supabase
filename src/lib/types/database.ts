@@ -14,6 +14,7 @@ export interface Database {
           id: string
           username: string | null
           avatar_url: string | null
+          email: string | null
           is_admin: boolean
           is_banned: boolean
           created_at: string
@@ -23,6 +24,7 @@ export interface Database {
           id: string
           username?: string | null
           avatar_url?: string | null
+          email?: string | null
           is_admin?: boolean
           is_banned?: boolean
           created_at?: string
@@ -32,6 +34,7 @@ export interface Database {
           id?: string
           username?: string | null
           avatar_url?: string | null
+          email?: string | null
           is_admin?: boolean
           is_banned?: boolean
           created_at?: string

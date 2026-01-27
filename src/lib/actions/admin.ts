@@ -32,7 +32,7 @@ export async function markSuggestionDone(
 
     const { data: suggestion, error: fetchError } = await supabase
       .from('suggestions')
-      .select('*')
+      .select('id, title, user_id')
       .eq('id', suggestionId)
       .single()
 
@@ -40,8 +40,11 @@ export async function markSuggestionDone(
       return { error: 'Suggestion non trouvée' }
     }
 
-    const usersMetadata = await getUsersMetadata([suggestion.user_id])
-    const authorMeta = usersMetadata.get(suggestion.user_id)
+    const { data: authorProfile } = await supabase
+      .from('profiles')
+      .select('username, email')
+      .eq('id', suggestion.user_id)
+      .single()
 
     const { error: updateError } = await supabase
       .from('suggestions')
@@ -55,13 +58,20 @@ export async function markSuggestionDone(
 
     if (updateError) throw updateError
 
-    const createdLinks: { platform: string; url: string }[] = []
+    const validLinks = links.filter(link => link.url.trim())
     
-    for (const link of links) {
-      if (link.url.trim()) {
+    const linkMetadataResults = await Promise.all(
+      validLinks.map(async (link) => {
         const metadata = await fetchLinkMetadata(link.url)
         const platform = detectPlatform(link.url)
-        
+        return { link, metadata, platform }
+      })
+    )
+
+    const createdLinks: { platform: string; url: string }[] = []
+    
+    await Promise.all(
+      linkMetadataResults.map(async ({ link, metadata, platform }) => {
         const { error: linkError } = await supabase
           .from('suggestion_links')
           .insert({
@@ -78,33 +88,33 @@ export async function markSuggestionDone(
         } else {
           createdLinks.push({ platform, url: link.url.trim() })
         }
-      }
-    }
+      })
+    )
 
     const { SITE_URL } = await import('@/lib/config')
-    const baseUrl = SITE_URL
-    const ideaUrl = `${baseUrl}/suggestions/${suggestionId}`
+    const ideaUrl = `${SITE_URL}/suggestions/${suggestionId}`
     
-    const serviceClient = await createServiceClient()
-    const { data: { users: authUsers } } = await serviceClient.auth.admin.listUsers()
-    const authorUser = authUsers?.find(u => u.id === suggestion.user_id)
-    
-    if (authorUser?.email) {
+    const emailPromises: Promise<boolean | void>[] = []
+
+    if (authorProfile?.email) {
       const emailHtml = generateIdeaCompletedEmail(
-        authorMeta?.username || 'Utilisateur',
+        authorProfile.username || 'Utilisateur',
         suggestion.title,
         ideaUrl,
         createdLinks
       )
       
-      sendEmail({
-        to: authorUser.email,
-        subject: `Votre suggestion "${suggestion.title}" a été réalisée !`,
-        html: emailHtml,
-      }).catch(err => console.error('Failed to send author notification email:', err))
+      emailPromises.push(
+        sendEmail({
+          to: authorProfile.email,
+          subject: `Votre suggestion "${suggestion.title}" a été réalisée !`,
+          html: emailHtml,
+        }).catch(err => console.error('Failed to send author notification email:', err))
+      )
     }
 
     const followers = await getFollowersWithEmail(suggestionId)
+    
     for (const follower of followers) {
       if (follower.id === suggestion.user_id) continue
       
@@ -115,12 +125,16 @@ export async function markSuggestionDone(
         createdLinks
       )
       
-      sendEmail({
-        to: follower.email,
-        subject: `"${suggestion.title}" a été réalisée !`,
-        html: followerEmailHtml,
-      }).catch(err => console.error('Failed to send follower notification email:', err))
+      emailPromises.push(
+        sendEmail({
+          to: follower.email,
+          subject: `"${suggestion.title}" a été réalisée !`,
+          html: followerEmailHtml,
+        }).catch(err => console.error('Failed to send follower notification email:', err))
+      )
     }
+
+    await Promise.all(emailPromises)
 
     revalidatePath('/')
     revalidatePath(`/suggestions/${suggestionId}`)
@@ -324,28 +338,21 @@ export async function getUsers(): Promise<User[]> {
     
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, is_admin, is_banned, created_at, updated_at')
+      .select('id, username, avatar_url, email, is_admin, is_banned, created_at, updated_at')
       .order('created_at', { ascending: false })
 
     if (!profiles) return []
 
-    const { data: { users: authUsers } } = await supabase.auth.admin.listUsers()
-    const authUserMap = new Map(authUsers?.map(u => [u.id, u]) || [])
-
-    return profiles.map(profile => {
-      const authUser = authUserMap.get(profile.id)
-      const metadata = authUser?.user_metadata || {}
-      return {
-        id: profile.id,
-        email: authUser?.email || '',
-        username: metadata.username || authUser?.email?.split('@')[0] || null,
-        avatar_url: metadata.avatar_url || null,
-        is_admin: profile.is_admin,
-        is_banned: profile.is_banned,
-        created_at: profile.created_at,
-        updated_at: profile.updated_at,
-      }
-    })
+    return profiles.map(profile => ({
+      id: profile.id,
+      email: profile.email || '',
+      username: profile.username || profile.email?.split('@')[0] || null,
+      avatar_url: profile.avatar_url || null,
+      is_admin: profile.is_admin,
+      is_banned: profile.is_banned,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at,
+    }))
   } catch (error) {
     console.error('Get users error:', error)
     return []

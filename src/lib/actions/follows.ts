@@ -106,21 +106,22 @@ export async function getFollowersWithEmail(
 
     const userIds = follows.map(f => f.user_id)
 
-    const { data: { users }, error } = await supabase.auth.admin.listUsers()
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('id, email, username')
+      .in('id', userIds)
     
-    if (error || !users) {
-      console.error('Error fetching user emails:', error)
+    if (error || !profiles) {
+      console.error('Error fetching follower profiles:', error)
       return []
     }
 
-    const userIdSet = new Set(userIds)
-    
-    return users
-      .filter(u => userIdSet.has(u.id) && u.email)
-      .map(u => ({
-        id: u.id,
-        email: u.email!,
-        username: u.user_metadata?.username || u.email?.split('@')[0] || '',
+    return profiles
+      .filter(p => p.email)
+      .map(p => ({
+        id: p.id,
+        email: p.email!,
+        username: p.username || p.email?.split('@')[0] || '',
       }))
   } catch (error) {
     console.error('Get followers with email error:', error)

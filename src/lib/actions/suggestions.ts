@@ -323,7 +323,7 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
           .in('suggestion_id', suggestionIds),
         supabase
           .from('suggestion_tags')
-          .select('suggestion_id, tag_id')
+          .select('suggestion_id, tag:tags(*)')
           .in('suggestion_id', suggestionIds),
         getUsersMetadata(userIds),
       ])
@@ -344,22 +344,9 @@ export async function getSuggestions(options?: GetSuggestionsOptions): Promise<P
         }
       }
 
-      if (suggestionTagsResult.data && suggestionTagsResult.data.length > 0) {
-        const tagIds = [...new Set(suggestionTagsResult.data.map(st => st.tag_id))]
-        const { data: allTags } = await supabase
-          .from('tags')
-          .select('*')
-          .in('id', tagIds)
-        
-        const tagById = new Map<string, Tag>()
-        if (allTags) {
-          for (const tag of allTags) {
-            tagById.set(tag.id, tag)
-          }
-        }
-        
+      if (suggestionTagsResult.data) {
         for (const st of suggestionTagsResult.data) {
-          const tag = tagById.get(st.tag_id)
+          const tag = st.tag as Tag | null
           if (tag) {
             const existing = tagsMap.get(st.suggestion_id) || []
             existing.push(tag)
@@ -424,22 +411,16 @@ export async function getSuggestion(id: string): Promise<SuggestionWithVotes | n
 
     const [usersMetadata, suggestionTagsResult, votesResult, linksResult] = await Promise.all([
       getUsersMetadata([suggestion.user_id]),
-      supabase.from('suggestion_tags').select('tag_id').eq('suggestion_id', id),
+      supabase.from('suggestion_tags').select('tag:tags(*)').eq('suggestion_id', id),
       supabase.from('votes').select('user_id, voter_id').eq('suggestion_id', id),
       supabase.from('suggestion_links').select('*').eq('suggestion_id', id),
     ])
 
     const userMeta = usersMetadata.get(suggestion.user_id)
 
-    let tags: Tag[] = []
-    if (suggestionTagsResult.data && suggestionTagsResult.data.length > 0) {
-      const tagIds = suggestionTagsResult.data.map(st => st.tag_id)
-      const { data: tagData } = await supabase
-        .from('tags')
-        .select('*')
-        .in('id', tagIds)
-      tags = tagData || []
-    }
+    const tags: Tag[] = suggestionTagsResult.data
+      ?.map(st => st.tag as Tag | null)
+      .filter((tag): tag is Tag => tag !== null) || []
 
     const voteCount = votesResult.data?.length || 0
     const hasVoted = user 
